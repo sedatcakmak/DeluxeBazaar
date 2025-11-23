@@ -166,7 +166,7 @@ public class OrderHandler {
         if (section != null)
             return section;
 
-        BazaarItem bazaarItem =  BazaarItemHook.getBazaarItem(item);
+        BazaarItem bazaarItem = BazaarItemHook.getBazaarItem(item);
         if (bazaarItem == null)
             return null;
 

@@ -164,10 +164,10 @@ public class Utils {
             return;
 
         for (String command : commands) {
-            command = command
+            command = placeholderApi(player, command
                     .replace("%player_displayname%", player.getDisplayName())
                     .replace("%player_name%", player.getName())
-                    .replace("%player_uuid%", String.valueOf(player.getUniqueId()));
+                    .replace("%player_uuid%", String.valueOf(player.getUniqueId())));
 
             if (command.startsWith("[player]"))
                 player.performCommand(command
@@ -212,8 +212,6 @@ public class Utils {
                         .replace(key, value);
             }
 
-
-
         return message;
     }
 
@@ -251,8 +249,6 @@ public class Utils {
             }
             if (message.equals(""))
                 return false;
-
-
 
             player.sendMessage(placeholderApi(player, colorize(replacePlaceholders(message, placeholderUtil))));
         } else
