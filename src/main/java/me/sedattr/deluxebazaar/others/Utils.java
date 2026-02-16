@@ -236,7 +236,7 @@ public class Utils {
         player.playSound(player.getLocation(), sound, (float) section.getDouble("volume", 1.0), (float) section.getDouble("pitch", 1.0));
     }
 
-    public static Boolean sendMessage(CommandSender player, String text, PlaceholderUtil placeholderUtil) {
+    public static boolean sendMessage(CommandSender player, String text, PlaceholderUtil placeholderUtil) {
         if (player == null)
             return false;
 
@@ -288,7 +288,7 @@ public class Utils {
         return result.toString().trim();
     }
 
-    public static Boolean sendMessage(CommandSender player, String text) {
+    public static boolean sendMessage(CommandSender player, String text) {
         if (player == null)
             return false;
 
