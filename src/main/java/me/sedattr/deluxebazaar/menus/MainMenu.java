@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MainMenu implements MenuManager {
     private final ConfigurationSection section;
@@ -538,7 +539,7 @@ public class MainMenu implements MenuManager {
             return;
         }
 
-        HashMap<String, BazaarItem> items = DeluxeBazaar.getInstance().bazaarItems;
+        ConcurrentHashMap<String, BazaarItem> items = DeluxeBazaar.getInstance().bazaarItems;
         if (items != null && !items.isEmpty()) {
             List<Integer> slots = DeluxeBazaar.getInstance().categoriesFile.getConfigurationSection("search").getIntegerList("slots");
             int i = 0;

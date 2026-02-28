@@ -48,9 +48,9 @@ public class DeluxeBazaar extends JavaPlugin {
     public OrderHandler orderHandler;
     public DataHandler dataHandler;
 
-    public HashMap<UUID, PlayerBazaar> players = new HashMap<>();
-    public HashMap<String, BazaarItem> bazaarItems = new HashMap<>();
-    public HashMap<String, ItemStack> normalItems = new HashMap<>();
+    public java.util.concurrent.ConcurrentHashMap<UUID, PlayerBazaar> players = new java.util.concurrent.ConcurrentHashMap<>();
+    public java.util.concurrent.ConcurrentHashMap<String, BazaarItem> bazaarItems = new java.util.concurrent.ConcurrentHashMap<>();
+    public java.util.concurrent.ConcurrentHashMap<String, ItemStack> normalItems = new java.util.concurrent.ConcurrentHashMap<>();
 
     public NumberFormat numberFormat;
     public Integer version;

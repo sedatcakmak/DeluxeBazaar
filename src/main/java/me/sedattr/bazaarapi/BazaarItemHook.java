@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BazaarItemHook {
     public static BazaarItem getBazaarItem(String name) {
@@ -83,7 +84,7 @@ public class BazaarItemHook {
                 return nbt;
         }
 
-        HashMap<String, BazaarItem> bazaarItems = DeluxeBazaar.getInstance().bazaarItems;
+        ConcurrentHashMap<String, BazaarItem> bazaarItems = DeluxeBazaar.getInstance().bazaarItems;
         if (bazaarItems.isEmpty())
             return null;
 

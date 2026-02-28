@@ -7,6 +7,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 public class YamlDatabase implements DatabaseManager {
@@ -92,23 +94,111 @@ public class YamlDatabase implements DatabaseManager {
     }
 
     public boolean saveDatabase() {
-        this.data.set("players", null);
-        this.data.set("items", null);
+        // Atomic save: write to temp file first, then rename to prevent data loss on crash
+        File tempFile = new File(DeluxeBazaar.getInstance().getDataFolder(), "database.yml.tmp");
+        YamlConfiguration tempData = new YamlConfiguration();
 
+        // Write to temp config (original data is NOT cleared)
         for (Map.Entry<UUID, PlayerBazaar> entry : DeluxeBazaar.getInstance().players.entrySet())
-            savePlayer(entry.getKey(), entry.getValue());
+            savePlayerToConfig(tempData, entry.getKey(), entry.getValue());
 
         for (Map.Entry<String, BazaarItem> entry : DeluxeBazaar.getInstance().bazaarItems.entrySet())
-            saveItem(entry.getKey(), entry.getValue());
+            saveItemToConfig(tempData, entry.getKey(), entry.getValue());
 
         try {
-            this.data.save(file);
+            tempData.save(tempFile);
+
+            // Atomic rename: backup old -> replace with new
+            File backupFile = new File(DeluxeBazaar.getInstance().getDataFolder(), "database.yml.bak");
+            if (this.file.exists()) {
+                Files.move(this.file.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+            try {
+                Files.move(tempFile.toPath(), this.file.toPath(), StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException atomicFail) {
+                // Fallback for filesystems that don't support atomic move
+                try {
+                    Files.move(tempFile.toPath(), this.file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException moveFail) {
+                    // Restore from backup
+                    if (backupFile.exists())
+                        Files.move(backupFile.toPath(), this.file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    return false;
+                }
+            }
+            if (backupFile.exists()) backupFile.delete();
         } catch (IOException e) {
             e.printStackTrace();
             return false;
         }
 
+        // Reload in-memory data from the newly saved file
+        YamlConfiguration reloaded = YamlConfiguration.loadConfiguration(this.file);
+        for (String key : this.data.getKeys(false))
+            this.data.set(key, null);
+        for (String key : reloaded.getKeys(false))
+            this.data.set(key, reloaded.get(key));
+
         return true;
+    }
+
+    private void savePlayerToConfig(YamlConfiguration config, UUID uuid, PlayerBazaar playerBazaar) {
+        if (playerBazaar == null)
+            playerBazaar = DeluxeBazaar.getInstance().players.get(uuid);
+        if (playerBazaar == null)
+            return;
+
+        String defaultMode = DeluxeBazaar.getInstance().configFile.getString("settings.default_mode", "direct");
+        if (!playerBazaar.getMode().equals(defaultMode))
+            config.set("players." + uuid + ".mode", playerBazaar.getMode());
+
+        String defaultCategory = DeluxeBazaar.getInstance().configFile.getString("settings.default_category", "mining");
+        if (!playerBazaar.getCategory().equals(defaultCategory))
+            config.set("players." + uuid + ".category", playerBazaar.getCategory());
+
+        for (PlayerOrder order : playerBazaar.getBuyOrders()) {
+            config.set("players." + uuid + ".buy_orders." + order.getUuid() + ".item", order.getItem().getName());
+            config.set("players." + uuid + ".buy_orders." + order.getUuid() + ".price", order.getPrice());
+            config.set("players." + uuid + ".buy_orders." + order.getUuid() + ".collected", order.getCollected());
+            config.set("players." + uuid + ".buy_orders." + order.getUuid() + ".filled", order.getFilled());
+            config.set("players." + uuid + ".buy_orders." + order.getUuid() + ".amount", order.getAmount());
+        }
+
+        for (PlayerOrder order : playerBazaar.getSellOffers()) {
+            config.set("players." + uuid + ".sell_offers." + order.getUuid() + ".item", order.getItem().getName());
+            config.set("players." + uuid + ".sell_offers." + order.getUuid() + ".price", order.getPrice());
+            config.set("players." + uuid + ".sell_offers." + order.getUuid() + ".collected", order.getCollected());
+            config.set("players." + uuid + ".sell_offers." + order.getUuid() + ".filled", order.getFilled());
+            config.set("players." + uuid + ".sell_offers." + order.getUuid() + ".amount", order.getAmount());
+        }
+    }
+
+    private void saveItemToConfig(YamlConfiguration config, String name, BazaarItem item) {
+        if (item == null)
+            item = DeluxeBazaar.getInstance().bazaarItems.get(name);
+        if (item == null)
+            return;
+
+        if (item.getBuyPrice() > 0 && item.getBuyPrice() != DeluxeBazaar.getInstance().itemsFile.getDouble("items." + name + ".prices.buy"))
+            config.set("items." + name + ".buy_price", item.getBuyPrice());
+        if (item.getSellPrice() > 0 && item.getSellPrice() != DeluxeBazaar.getInstance().itemsFile.getDouble("items." + name + ".prices.sell"))
+            config.set("items." + name + ".sell_price", item.getSellPrice());
+        if (item.getTotalBuyCount() > 0)
+            config.set("items." + name + ".buy_amount", item.getTotalBuyCount());
+        if (item.getTotalSellCount() > 0)
+            config.set("items." + name + ".sell_amount", item.getTotalSellCount());
+
+        for (OrderPrice order : item.getBuyPrices()) {
+            config.set("items." + name + ".buy_prices." + order.getUuid() + ".price", order.getPrice());
+            config.set("items." + name + ".buy_prices." + order.getUuid() + ".item_amount", order.getItemAmount());
+            config.set("items." + name + ".buy_prices." + order.getUuid() + ".order_amount", order.getOrderAmount());
+        }
+
+        for (OrderPrice order : item.getSellPrices()) {
+            config.set("items." + name + ".sell_prices." + order.getUuid() + ".price", order.getPrice());
+            config.set("items." + name + ".sell_prices." + order.getUuid() + ".item_amount", order.getItemAmount());
+            config.set("items." + name + ".sell_prices." + order.getUuid() + ".order_amount", order.getOrderAmount());
+        }
     }
 
     @Override

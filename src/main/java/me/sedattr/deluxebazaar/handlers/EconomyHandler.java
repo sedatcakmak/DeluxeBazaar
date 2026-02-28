@@ -91,16 +91,17 @@ public class EconomyHandler {
             return false;
         }
 
+        // Fire event BEFORE removing balance to prevent money loss on cancel
+        BazaarItemBuyEvent event = new BazaarItemBuyEvent(player, item, price/amount, amount);
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled())
+            return false;
+
         if (!DeluxeBazaar.getInstance().economyManager.removeBalance(player, price)) {
             if (sendMessages)
                 Utils.sendMessage(player, "remove_error");
             return false;
         }
-
-        BazaarItemBuyEvent event = new BazaarItemBuyEvent(player, item, price/amount, amount);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled())
-            return null;
 
         if (isNormal)
             itemStack = new ItemStack(itemStack.getType(), 1, (short) itemSection.getInt("data"));
@@ -153,16 +154,11 @@ public class EconomyHandler {
             return false;
         }
 
-        if (!DeluxeBazaar.getInstance().economyManager.addBalance(player, price)) {
-            if (sendMessages)
-                Utils.sendMessage(player, "add_error");
-            return false;
-        }
-
+        // Fire event BEFORE any state changes to prevent free money on cancel
         BazaarItemSellEvent itemSellEvent = new BazaarItemSellEvent(player, item, price/count, count);
         Bukkit.getPluginManager().callEvent(itemSellEvent);
         if (itemSellEvent.isCancelled())
-            return null;
+            return false;
 
         int itemCount = 0;
         boolean enabled = false;
@@ -185,6 +181,17 @@ public class EconomyHandler {
 
                 enabled = true;
             }
+        }
+
+        // Add balance AFTER items are removed from inventory
+        if (!DeluxeBazaar.getInstance().economyManager.addBalance(player, price)) {
+            // Rollback: give items back
+            ItemStack rollbackItem = item.getItemStack();
+            if (rollbackItem != null)
+                DeluxeBazaar.getInstance().itemHandler.giveBazaarItems(player, rollbackItem.clone(), count);
+            if (sendMessages)
+                Utils.sendMessage(player, "add_error");
+            return false;
         }
 
         item.addSellCount(count);

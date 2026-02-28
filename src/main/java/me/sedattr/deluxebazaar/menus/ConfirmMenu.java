@@ -214,6 +214,9 @@ public class ConfirmMenu {
                 if (orderEvent.isCancelled())
                     return;
 
+                player.closeInventory();
+
+                // Remove items FIRST to prevent dupe on crash
                 int count = 0;
                 boolean enabled = false;
                 for (ItemStack is : sellableItems) {
@@ -239,9 +242,16 @@ public class ConfirmMenu {
                     }
                 }
 
-                player.closeInventory();
-                PlayerOrder playerOrder = new PlayerOrder(player, UUID.randomUUID(), bazaarItem, OrderType.SELL, unitPrice, amount);
-                DeluxeBazaar.getInstance().orderHandler.createOrder(player, playerOrder);
+                // Create order AFTER items are removed
+                if (count >= amount) {
+                    PlayerOrder playerOrder = new PlayerOrder(player, UUID.randomUUID(), bazaarItem, OrderType.SELL, unitPrice, amount);
+                    DeluxeBazaar.getInstance().orderHandler.createOrder(player, playerOrder);
+                } else {
+                    // Rollback: give back removed items
+                    if (count > 0)
+                        DeluxeBazaar.getInstance().itemHandler.giveBazaarItems(player, bazaarItem.getItemStack().clone(), count);
+                    return;
+                }
 
                 Utils.sendMessage(player, "setup_sell_offer", placeholderUtil);
 

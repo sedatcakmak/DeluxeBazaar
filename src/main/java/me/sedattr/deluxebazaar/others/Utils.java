@@ -21,6 +21,13 @@ import java.util.regex.Pattern;
 public class Utils {
     String username = "%%__USERNAME__%%";
 
+    private static String sanitizeForCommand(String input) {
+        if (input == null) return "";
+        return input.replaceAll("[;&|`$(){}\\[\\]!#]", "")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+    }
+
     public static boolean checkPermission(CommandSender player, String type, String text) {
         if (player.isOp())
             return true;
@@ -165,8 +172,8 @@ public class Utils {
 
         for (String command : commands) {
             command = placeholderApi(player, command
-                    .replace("%player_displayname%", player.getDisplayName())
-                    .replace("%player_name%", player.getName())
+                    .replace("%player_displayname%", sanitizeForCommand(player.getDisplayName()))
+                    .replace("%player_name%", sanitizeForCommand(player.getName()))
                     .replace("%player_uuid%", String.valueOf(player.getUniqueId())));
 
             if (command.startsWith("[player]"))

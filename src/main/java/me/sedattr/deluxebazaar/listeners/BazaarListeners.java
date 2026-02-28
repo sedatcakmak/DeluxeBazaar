@@ -16,12 +16,13 @@ import java.util.*;
 
 public class BazaarListeners implements Listener {
     @EventHandler
-    public void onItemBuy(BazaarItemBuyEvent e) {
+    public synchronized void onItemBuy(BazaarItemBuyEvent e) {
         OfflinePlayer player = e.getPlayer();
         Double price = e.getUnitPrice();
         BazaarItem item = e.getItem();
         int count = e.getCount();
 
+        List<OrderPrice> toRemove = new ArrayList<>();
         List<OrderPrice> orderPrices = new ArrayList<>(item.getSellPrices());
         if (!orderPrices.isEmpty())
             for (OrderPrice orderPrice : orderPrices) {
@@ -35,15 +36,6 @@ public class BazaarListeners implements Listener {
                 if (newCount <= 0)
                     continue;
 
-                /*
-                double maximumPriceChange = DeluxeBazaar.getInstance().configFile.getBoolean("sell_offer.limit_price_change") ? DeluxeBazaar.getInstance().configFile.getDouble("sell_offer.maximum_price_change", 0.0) : 0.0;
-                if (maximumPriceChange > 0.0) {
-                    double currentChange = BazaarItemHook.getDefaultBuyPrice(item.getName()) - orderPrice.getPrice();
-                    if (currentChange > maximumPriceChange)
-                        continue;
-                }
-                 */
-
                 if (newCount > count) {
                     orderPrice.setItemAmount(orderPrice.getItemAmount() - count);
                     changePlayerOrders(player.getUniqueId(), count, orderPrice);
@@ -53,18 +45,22 @@ public class BazaarListeners implements Listener {
                     count-=newCount;
                     changePlayerOrders(player.getUniqueId(), newCount, orderPrice);
 
-                    item.getSellPrices().remove(orderPrice);
+                    toRemove.add(orderPrice);
                 }
             }
+
+        // Remove after iteration to avoid concurrent modification
+        item.getSellPrices().removeAll(toRemove);
     }
 
     @EventHandler
-    public void onItemSell(BazaarItemSellEvent e) {
+    public synchronized void onItemSell(BazaarItemSellEvent e) {
         OfflinePlayer player = e.getPlayer();
         Double price = e.getUnitPrice();
         BazaarItem item = e.getItem();
         int count = e.getCount();
 
+        List<OrderPrice> toRemove = new ArrayList<>();
         List<OrderPrice> orderPrices = new ArrayList<>(item.getBuyPrices());
         if (!orderPrices.isEmpty())
             for (OrderPrice orderPrice : orderPrices) {
@@ -78,15 +74,6 @@ public class BazaarListeners implements Listener {
                 if (newCount <= 0)
                     continue;
 
-                /*
-                double maximumPriceChange = DeluxeBazaar.getInstance().configFile.getBoolean("buy_order.limit_price_change") ? DeluxeBazaar.getInstance().configFile.getDouble("buy_order.maximum_price_change", 0.0) : 0.0;
-                if (maximumPriceChange > 0.0) {
-                    double currentChange = orderPrice.getPrice() - BazaarItemHook.getDefaultSellPrice(item.getName());
-                    if (currentChange > maximumPriceChange)
-                        continue;
-                }
-                 */
-
                 if (newCount > count) {
                     orderPrice.setItemAmount(orderPrice.getItemAmount() - count);
 
@@ -97,16 +84,19 @@ public class BazaarListeners implements Listener {
                     count-=newCount;
                     changePlayerOrders(player.getUniqueId(), newCount, orderPrice);
 
-                    item.getBuyPrices().remove(orderPrice);
+                    toRemove.add(orderPrice);
                 }
             }
+
+        // Remove after iteration to avoid concurrent modification
+        item.getBuyPrices().removeAll(toRemove);
     }
 
     public void changePlayerOrders(UUID uuid, Integer count, OrderPrice orderPrice) {
         for (Map.Entry<UUID, List<PlayerOrder>> entry : orderPrice.getPlayers().entrySet()) {
             if (count <= 0)
                 return;
-            if (uuid == entry.getKey())
+            if (uuid.equals(entry.getKey()))
                 continue;
 
             PlayerBazaar playerBazaar = DeluxeBazaar.getInstance().players.get(entry.getKey());

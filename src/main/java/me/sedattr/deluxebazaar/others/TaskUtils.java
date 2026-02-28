@@ -31,6 +31,14 @@ public final class TaskUtils {
         }
     }
 
+    public static void runAsync(Runnable runnable) {
+        if (isFolia) {
+            DeluxeBazaar.getInstance().getServer().getAsyncScheduler().runNow(DeluxeBazaar.getInstance(), task -> runnable.run());
+        } else {
+            Bukkit.getScheduler().runTaskAsynchronously(DeluxeBazaar.getInstance(), runnable);
+        }
+    }
+
     public static void runTimer(Runnable runnable, long delayTicks, long periodTicks) {
         if (isFolia) {
             DeluxeBazaar.getInstance().getServer().getGlobalRegionScheduler().runAtFixedRate(DeluxeBazaar.getInstance(), task -> runnable.run(), delayTicks, periodTicks);
