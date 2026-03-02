@@ -38,6 +38,45 @@ public class OrderHandler {
             playerBazaar.getSellOffers().remove(order);
     }
 
+    public void updateOrderPrice(OfflinePlayer player, PlayerOrder order, double oldPrice, double newPrice) {
+        BazaarItem bazaarItem = order.getItem();
+        List<OrderPrice> prices = order.getType().equals(OrderType.BUY) ? bazaarItem.getBuyPrices() : bazaarItem.getSellPrices();
+        int leftAmount = order.getAmount() - order.getFilled();
+
+        // Remove from old OrderPrice entry
+        OrderPrice oldOrderPrice = getOrderPrice(prices, oldPrice);
+        if (oldOrderPrice != null) {
+            int newAmount = oldOrderPrice.getItemAmount() - leftAmount;
+            if (newAmount > 0)
+                oldOrderPrice.setItemAmount(newAmount);
+            else
+                prices.remove(oldOrderPrice);
+
+            oldOrderPrice.setOrderAmount(oldOrderPrice.getOrderAmount() - 1);
+
+            List<PlayerOrder> playerOrders = oldOrderPrice.getPlayers().getOrDefault(player.getUniqueId(), new ArrayList<>());
+            playerOrders.remove(order);
+            if (playerOrders.isEmpty())
+                oldOrderPrice.getPlayers().remove(player.getUniqueId());
+            else
+                oldOrderPrice.getPlayers().put(player.getUniqueId(), playerOrders);
+        }
+
+        // Add to new OrderPrice entry
+        OrderPrice newOrderPrice = getOrderPrice(prices, newPrice);
+        if (newOrderPrice == null) {
+            newOrderPrice = new OrderPrice(order.getType(), newPrice, leftAmount);
+            prices.add(newOrderPrice);
+        } else {
+            newOrderPrice.setItemAmount(newOrderPrice.getItemAmount() + leftAmount);
+            newOrderPrice.setOrderAmount(newOrderPrice.getOrderAmount() + 1);
+        }
+
+        List<PlayerOrder> playerOrders = newOrderPrice.getPlayers().getOrDefault(player.getUniqueId(), new ArrayList<>());
+        playerOrders.add(order);
+        newOrderPrice.getPlayers().put(player.getUniqueId(), playerOrders);
+    }
+
     public void createOrder(OfflinePlayer player, PlayerOrder playerOrder) {
         List<OrderPrice> prices = playerOrder.getType().equals(OrderType.BUY) ? playerOrder.getItem().getBuyPrices() : playerOrder.getItem().getSellPrices();
         OrderPrice orderPrice = getOrderPrice(prices, playerOrder.getPrice());

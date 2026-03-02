@@ -57,13 +57,16 @@ public class OrderSettingsMenu implements MenuManager {
                 if (orderEvent.isCancelled())
                     return;
 
-                DeluxeBazaar.getInstance().orderHandler.deleteOrder(player, order);
-
                 if (order.getType().equals(OrderType.BUY)) {
+                    if (!DeluxeBazaar.getInstance().economyManager.addBalance(player, total * order.getPrice())) {
+                        Utils.sendMessage(player, "add_error");
+                        return;
+                    }
+                    DeluxeBazaar.getInstance().orderHandler.deleteOrder(player, order);
                     DeluxeBazaar.getInstance().dataHandler.writeToLog("[PLAYER CANCELLED BUY ORDER] " + player.getName() + " (" + player.getUniqueId() + ") cancelled " + (order.getAmount()) + "x " + name + " buy order. (" + (total * order.getPrice()) + " coins)");
-                    DeluxeBazaar.getInstance().economyManager.addBalance(player, total * order.getPrice());
                     Utils.sendMessage(player, "cancelled_buy_order", placeholderUtil);
                 } else {
+                    DeluxeBazaar.getInstance().orderHandler.deleteOrder(player, order);
                     DeluxeBazaar.getInstance().dataHandler.writeToLog("[PLAYER CANCELLED SELL OFFER] " + player.getName() + " (" + player.getUniqueId() + ") cancelled " + (order.getAmount()) + "x " + name + " sell offer. (" + (total * order.getPrice()) + " coins)");
                     DeluxeBazaar.getInstance().itemHandler.giveBazaarItems(player, exampleItem, total);
                     Utils.sendMessage(player, "cancelled_sell_offer", placeholderUtil);
@@ -162,7 +165,15 @@ public class OrderSettingsMenu implements MenuManager {
                 }
             }
 
-            DeluxeBazaar.getInstance().economyManager.removeBalance(this.player, price);
+            if (requiredMoney > 0) {
+                if (!DeluxeBazaar.getInstance().economyManager.removeBalance(this.player, requiredMoney))
+                    return;
+            } else if (requiredMoney < 0) {
+                if (!DeluxeBazaar.getInstance().economyManager.addBalance(this.player, Math.abs(requiredMoney))) {
+                    Utils.sendMessage(player, "add_error");
+                    return;
+                }
+            }
         } else {
             if (BazaarItemHook.getDefaultBuyPrice(this.order.getItem().getName()) <= 0.0) {
                 String itemName = DeluxeBazaar.getInstance().itemsFile.getString("items." + this.order.getItem().getName() + ".name");
@@ -208,6 +219,8 @@ public class OrderSettingsMenu implements MenuManager {
                 .addPlaceholder("%old_price%", DeluxeBazaar.getInstance().numberFormat.format(order.getPrice()))
         );
 
+        double oldPrice = order.getPrice();
+        DeluxeBazaar.getInstance().orderHandler.updateOrderPrice(player, order, oldPrice, number);
         order.setPrice(number);
         new OrdersMenu(player).openMenu(1);
     }
