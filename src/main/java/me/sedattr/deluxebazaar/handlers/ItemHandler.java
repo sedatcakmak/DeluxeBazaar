@@ -73,43 +73,19 @@ public class ItemHandler {
 
     public List<ItemStack> getInventoryItems(Player player, Boolean removeAirs) {
         PlayerInventory inventory = player.getInventory();
-        List<ItemStack> items = new ArrayList<>(Arrays.asList(inventory.getContents().clone()));
-
         List<ItemStack> newItems = new ArrayList<>();
-        boolean is1_8 = Bukkit.getVersion().contains("1.8");
-        if (!is1_8)
-            for (ItemStack armor : inventory.getArmorContents())
-                items.remove(armor);
 
-        ItemStack offHand = !is1_8 ? inventory.getItemInOffHand() : null;
-        boolean offHandDeleted = false;
-
-        for (ItemStack item : items) {
-            if (!is1_8 && !offHandDeleted) {
-                if ((item == null || item.getType().equals(Material.AIR)) && offHand.getType().equals(Material.AIR)) {
-                    offHandDeleted = true;
-                    continue;
-                }
-
-                if (item != null && !item.getType().equals(Material.AIR) && !offHand.getType().equals(Material.AIR)) {
-                    if (item == offHand || item.equals(offHand)) {
-                        offHandDeleted = true;
-                        continue;
-                    }
-                }
-            }
-
+        // Sadece main inventory slotlarını iterate et (0-35)
+        // Armor (36-39) ve offhand (40) otomatik hariç
+        for (int i = 0; i < 36; i++) {
+            ItemStack item = inventory.getItem(i);
             if (item == null || item.getType().equals(Material.AIR)) {
-                if (removeAirs)
-                    continue;
-
+                if (removeAirs) continue;
                 newItems.add(item);
                 continue;
             }
-
             newItems.add(item);
         }
-
         return newItems;
     }
 
